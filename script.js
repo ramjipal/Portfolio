@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    const savedTheme = localStorage.getItem('theme') || 'dard';
+    const savedTheme = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
     updateThemeIcon(savedTheme);
 
@@ -132,33 +132,48 @@ document.addEventListener('DOMContentLoaded', function() {
     contactForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
-        const formData = {
-            name: document.getElementById('name').value,
-            email: document.getElementById('email').value,
-            subject: document.getElementById('subject').value,
-            message: document.getElementById('message').value
-        };
-
-        console.log('Form submitted:', formData);
-        
         const submitButton = this.querySelector('button[type="submit"]');
         const originalText = submitButton.innerHTML;
         submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
         submitButton.disabled = true;
 
-        setTimeout(() => {
-            submitButton.innerHTML = '<i class="fas fa-check"></i> Message Sent!';
-            submitButton.style.background = '#10b981';
-            
-            setTimeout(() => {
+        fetch(this.action, {
+            method: 'POST',
+            body: new FormData(this),
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                submitButton.innerHTML = '<i class="fas fa-check"></i> Message Sent!';
+                submitButton.style.background = '#10b981';
+                
+                setTimeout(() => {
+                    submitButton.innerHTML = originalText;
+                    submitButton.disabled = false;
+                    submitButton.style.background = '';
+                    contactForm.reset();
+                    showNotification('Thank you! Your message has been sent successfully.', 'success');
+                }, 2000);
+            } else {
+                response.json().then(data => {
+                    if (data.errors) {
+                        showNotification(data.errors.map(error => error.message).join(', '), 'error');
+                    } else {
+                        showNotification('Oops! There was a problem submitting your form.', 'error');
+                    }
+                });
                 submitButton.innerHTML = originalText;
                 submitButton.disabled = false;
-                submitButton.style.background = '';
-                contactForm.reset();
-                
-                showNotification('Thank you! Your message has been sent successfully.', 'success');
-            }, 2000);
-        }, 1500);
+            }
+        })
+        .catch(error => {
+            console.error('Form submission error:', error);
+            submitButton.innerHTML = originalText;
+            submitButton.disabled = false;
+            showNotification('Failed to send message. Please try again or email me directly.', 'error');
+        });
     });
 
     downloadResumeBtn.addEventListener('click', function(e) {
